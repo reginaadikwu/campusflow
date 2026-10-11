@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from campusflow.reports import generate_report
