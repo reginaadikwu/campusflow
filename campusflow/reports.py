@@ -1,11 +1,29 @@
-"""
-Reports module for generating helpdesk metric aggregations.
-"""
 
-def generate_status_report(tickets: dict) -> dict:
-    """Calculates ticket breakdowns by status."""
-    return {"open": 0, "in_progress": 0, "resolved": 0}
+STATUS_ORDER = ("open", "in_progress", "resolved")
+PRIORITY_ORDER = ("critical", "high", "medium", "low")
 
-def generate_priority_report(tickets: dict) -> dict:
-    """Calculates ticket breakdowns by calculated priority."""
-    return {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
+def generate_report(tickets):
+    """Return total ticket count and counts by status and priority."""
+    by_status = {status: 0 for status in STATUS_ORDER}
+    by_priority = {priority: 0 for priority in PRIORITY_ORDER}
+
+    for ticket in tickets:
+        status = ticket["status"]
+        priority = ticket["priority"]
+
+        if status not in by_status:
+            raise ValueError(f"Unknown ticket status: {status!r}")
+
+        if priority not in by_priority:
+            raise ValueError(f"Unknown ticket priority: {priority!r}")
+
+        by_status[status] += 1
+        by_priority[priority] += 1
+
+    return {
+        "total": len(tickets),
+        "by_status": by_status,
+        "by_priority": by_priority,
+    }
+
