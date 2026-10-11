@@ -1,4 +1,3 @@
-
 import unittest
 
 from campusflow.reports import generate_report
