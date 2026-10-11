@@ -1,4 +1,3 @@
-
 STATUS_ORDER = ("open", "in_progress", "resolved")
 PRIORITY_ORDER = ("critical", "high", "medium", "low")
 
