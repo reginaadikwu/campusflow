@@ -62,14 +62,6 @@ class TestWorkflow(unittest.TestCase):
         with self.assertRaises(KeyError):
             assign_ticket(self.tickets, "T999", "Regina")
 
-    def test_queue_sorts_by_priority_then_numeric_id(self):
-        queue = get_work_queue(self.tickets)
-
-        self.assertEqual(
-            [ticket["id"] for ticket in queue],
-            ["T001", "T003", "T002"],
-        )
-
     def test_queue_excludes_resolved_tickets(self):
         assign_ticket(self.tickets, "T001", "Regina")
         change_status(self.tickets, "T001", "in_progress")
@@ -81,6 +73,44 @@ class TestWorkflow(unittest.TestCase):
             [ticket["id"] for ticket in queue],
             ["T003", "T002"],
         )
+
+   
+    def test_queue_sorts_by_priority_then_numeric_id(self):
+        queue = get_work_queue(self.tickets)
+
+        self.assertEqual(
+            [ticket["id"] for ticket in queue],
+            ["T001", "T003", "T002"],
+        )
+
+    
+    def test_queue_excludes_in_progress_tickets(self):
+        tickets = [
+            {
+                "id": "T001",
+                "title": "Wi-Fi issue",
+                "category": "Network",
+                "urgency": "high",
+                "affected_users": 10,
+                "priority": "critical",
+                "status": "in_progress",
+                "assigned_to": "Alex",
+            },
+            {
+                "id": "T002",
+                "title": "Laptop issue",
+                "category": "Hardware",
+                "urgency": "low",
+                "affected_users": 1,
+                "priority": "low",
+                "status": "open",
+                "assigned_to": None,
+            },
+        ]
+
+        queue = get_work_queue(tickets)
+
+        self.assertEqual([ticket["id"] for ticket in queue], ["T002"])
 
 
 if __name__ == "__main__":

@@ -80,11 +80,12 @@ def reopen_ticket(tickets, ticket_id):
     return ticket
 
 
+
 def get_work_queue(tickets):
-    """Return unresolved tickets in priority and numeric-ID order."""
-    unresolved = [
+    """Return only open tickets, sorted by priority and numeric ticket ID."""
+    open_tickets = [
         ticket for ticket in tickets
-        if ticket["status"] != "resolved"
+        if ticket["status"] == "open"
     ]
 
     def sort_key(ticket):
@@ -94,4 +95,4 @@ def get_work_queue(tickets):
             int(ticket_id[1:]),
         )
 
-    return sorted(unresolved, key=sort_key)
+    return sorted(open_tickets, key=sort_key)
