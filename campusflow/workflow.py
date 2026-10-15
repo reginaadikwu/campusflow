@@ -96,3 +96,68 @@ def get_work_queue(tickets):
         )
 
     return sorted(open_tickets, key=sort_key)
+
+
+def add_ticket_note(tickets, ticket_id, author, message):
+    """Add a validated note to an open or in-progress ticket."""
+    ticket = _find_ticket(tickets, ticket_id)
+
+    if ticket["status"] not in {"open", "in_progress"}:
+        raise ValueError("Notes can only be added to open or in-progress tickets.")
+
+    if not isinstance(author, str) or not author.strip():
+        raise ValueError("Author must not be blank.")
+
+    if not isinstance(message, str):
+        raise ValueError("Note message must be text.")
+
+    author = author.strip()
+    message = message.strip()
+
+    if not 5 <= len(message) <= 300:
+        raise ValueError("Note message must contain 5 to 300 characters.")
+
+    existing_notes = ticket.get("notes", [])
+
+    if not isinstance(existing_notes, list):
+        raise ValueError("Ticket notes must be a list.")
+
+    used_ids = set()
+    highest_number = 0
+
+    for note in existing_notes:
+        if not isinstance(note, dict):
+            raise ValueError("Each note must be a dictionary.")
+
+        note_id = note.get("note_id")
+
+        if not isinstance(note_id, str):
+            raise ValueError("Each note must have a valid note ID.")
+
+        if note_id in used_ids:
+            raise ValueError(f"Duplicate note ID: {note_id}")
+
+        used_ids.add(note_id)
+
+        if note_id.startswith("N") and note_id[1:].isdigit():
+            highest_number = max(highest_number, int(note_id[1:]))
+
+    next_number = highest_number + 1
+    note_id = f"N{next_number:03d}"
+
+    while note_id in used_ids:
+        next_number += 1
+        note_id = f"N{next_number:03d}"
+
+    note = {
+        "note_id": note_id,
+        "author": author,
+        "message": message,
+    }
+
+    # Change the ticket only after validation succeeds.
+    updated_notes = list(existing_notes)
+    updated_notes.append(note)
+    ticket["notes"] = updated_notes
+
+    return note

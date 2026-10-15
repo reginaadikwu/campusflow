@@ -1,4 +1,3 @@
-
 import unittest
 
 from campusflow.tickets import calculate_priority, create_ticket
@@ -45,7 +44,7 @@ class TestCreateTicket(unittest.TestCase):
             set(ticket),
             {
                 "id", "title", "category", "urgency",
-                "affected_users", "priority", "status", "assigned_to",
+                "affected_users", "priority", "status", "assigned_to", "notes",
             },
         )
         self.assertEqual(ticket["id"], "T001")
@@ -55,6 +54,7 @@ class TestCreateTicket(unittest.TestCase):
         self.assertEqual(ticket["status"], "open")
         self.assertIsNone(ticket["assigned_to"])
         self.assertEqual(len(self.tickets), 1)
+        self.assertEqual(ticket["notes"], [])
 
     def test_generates_next_id(self):
         create_ticket(self.tickets, "First", "Other", "low", 1)
