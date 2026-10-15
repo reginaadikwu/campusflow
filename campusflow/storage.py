@@ -1,4 +1,3 @@
-
 import json
 import os
 import re
@@ -19,7 +18,48 @@ REQUIRED_FIELDS = {
     "assigned_to",
 }
 
+LEGACY_FIELDS = REQUIRED_FIELDS
+CURRENT_FIELDS = REQUIRED_FIELDS | {"notes"}
+
 VALID_STATUSES = {"open", "in_progress", "resolved"}
+
+
+def _validate_notes(ticket_id, notes):
+    if not isinstance(notes, list):
+        raise ValueError(f"{ticket_id}: notes must be a list.")
+
+    seen_note_ids = set()
+
+    for note in notes:
+        if not isinstance(note, dict):
+            raise ValueError(f"{ticket_id}: each note must be a dictionary.")
+
+        if set(note) != {"note_id", "author", "message"}:
+            raise ValueError(f"{ticket_id}: invalid note fields.")
+
+        note_id = note["note_id"]
+        if not isinstance(note_id, str) or not re.fullmatch(
+            r"N\d{3,}", note_id
+        ):
+            raise ValueError(f"{ticket_id}: invalid note ID.")
+
+        if note_id in seen_note_ids:
+            raise ValueError(f"{ticket_id}: duplicate note ID {note_id}.")
+
+        seen_note_ids.add(note_id)
+
+        author = note["author"]
+        if not isinstance(author, str) or not author.strip():
+            raise ValueError(f"{ticket_id}: note author must not be blank.")
+
+        message = note["message"]
+        if (
+            not isinstance(message, str)
+            or not 5 <= len(message.strip()) <= 300
+        ):
+            raise ValueError(
+                f"{ticket_id}: note message must contain 5 to 300 characters."
+            )
 
 
 def _validate_tickets(tickets):
@@ -32,10 +72,9 @@ def _validate_tickets(tickets):
         if not isinstance(ticket, dict):
             raise ValueError("Each ticket must be a dictionary.")
 
-        if set(ticket) != REQUIRED_FIELDS:
-            raise ValueError(
-                "Each ticket must contain exactly the eight required fields."
-            )
+        fields = set(ticket)
+        if fields != CURRENT_FIELDS:
+            raise ValueError("Ticket contains missing or unexpected fields.")
 
         ticket_id = ticket["id"]
         if not isinstance(ticket_id, str) or not re.fullmatch(
@@ -50,12 +89,13 @@ def _validate_tickets(tickets):
         if not isinstance(ticket["title"], str) or not ticket["title"].strip():
             raise ValueError(f"{ticket_id}: title must not be blank.")
 
-        category = ticket["category"]
-        if category not in set(VALID_CATEGORIES.values()):
+        if ticket["category"] not in set(VALID_CATEGORIES.values()):
             raise ValueError(f"{ticket_id}: invalid category.")
 
         urgency = ticket["urgency"]
-        if urgency not in {"low", "medium", "high"}:
+        if not isinstance(urgency, str) or urgency not in {
+            "low", "medium", "high"
+        }:
             raise ValueError(f"{ticket_id}: invalid urgency.")
 
         expected_priority = calculate_priority(
@@ -73,9 +113,12 @@ def _validate_tickets(tickets):
         ):
             raise ValueError(f"{ticket_id}: invalid assigned_to value.")
 
+        if "notes" in ticket:
+            _validate_notes(ticket_id, ticket["notes"])
+
 
 def load_tickets(path):
-    """Load and validate tickets from JSON."""
+    """Load and validate tickets, supporting legacy records without notes."""
     path = Path(path)
 
     try:
@@ -90,15 +133,31 @@ def load_tickets(path):
     except OSError as exc:
         raise OSError(f"Cannot read ticket file {path}: {exc}") from exc
 
-    _validate_tickets(tickets)
-    return tickets
+    if not isinstance(tickets, list):
+        raise ValueError("Ticket data must be a list.")
+
+    # Work on copies so validation never partially changes loaded records.
+    normalized = []
+    for ticket in tickets:
+        if not isinstance(ticket, dict):
+            raise ValueError("Each ticket must be a dictionary.")
+
+        record = dict(ticket)
+        if set(record) == LEGACY_FIELDS:
+            record["notes"] = []
+        elif set(record) != CURRENT_FIELDS:
+            raise ValueError("Ticket contains missing or unexpected fields.")
+
+        normalized.append(record)
+
+    _validate_tickets(normalized)
+    return normalized
 
 
 def save_tickets(tickets, path):
     """Validate and atomically save tickets to JSON."""
     _validate_tickets(tickets)
     path = Path(path)
-
     temporary_path = None
 
     try:
@@ -130,4 +189,3 @@ def save_tickets(tickets, path):
                 temporary_path.unlink(missing_ok=True)
             except OSError:
                 pass
-

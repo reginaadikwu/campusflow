@@ -28,6 +28,23 @@ class TestStorage(unittest.TestCase):
 
         self.assertEqual(loaded, self.tickets)
 
+    def test_legacy_ticket_loads_with_empty_notes(self):
+        legacy_ticket = {
+            key: value
+            for key, value in self.tickets[0].items()
+            if key != "notes"
+        }
+        self.path.write_text(
+            json.dumps([legacy_ticket]),
+            encoding="utf-8",
+        )
+
+        loaded = load_tickets(self.path)
+
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["id"], legacy_ticket["id"])
+        self.assertEqual(loaded[0]["notes"], [])
+
     def test_malformed_json_raises_error(self):
         self.path.write_text("{not valid json", encoding="utf-8")
 
